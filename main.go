@@ -12,7 +12,7 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	fmt.Fprintf(w, "POST request successful\n")
-	name := r.FormValue("name")
+	origpic := r.FormValue("")
 	address := r.FormValue("address")
 	fmt.Fprintf(w, "Name = %s\n", name)
 	fmt.Fprintf(w, "Address = %s\n", address)
