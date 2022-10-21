@@ -1,46 +1,54 @@
 package main
 
 import (
+	"fmt"
+	"io"
 	"net/http"
-
-	"github.com/gin-gonic/gin"
-	"gorm.io/driver/sqlite"
-	"gorm.io/gorm"
+	"os"
 )
 
-type Animal struct {
-	gorm.Model
-	ID   uint
-	Face string
+func uploadFile(w http.ResponseWriter, r *http.Request) {
+
+	r.ParseMultipartForm(10 << 20)
+
+	f, h, err := r.FormFile("myUpload")
+	if err != nil {
+		fmt.Println("Error Retrieving the File")
+		fmt.Println(err)
+		return
+	}
+	defer f.Close()
+	fmt.Printf("Uploaded File: %+v\n", h.Filename)
+	fmt.Printf("File Size: %+v\n", h.Size)
+	fmt.Printf("MIME Header: %+v\n", h.Header)
+
+	tempFile, err := os.CreateTemp(".\\temp", "upload*.png")
+	if err != nil {
+		fmt.Println(err)
+	} else {
+		//If the photo exists, pass it to the API
+		fmt.Println(tempFile.Name())
+
+	}
+	defer tempFile.Close()
+
+	fileBytes, err := io.ReadAll(f)
+	if err != nil {
+		fmt.Println(err)
+	}
+	tempFile.Write(fileBytes)
+	fmt.Fprintf(w, "Successfully Uploaded File\n")
+}
+
+func setupRoutes() {
+	http.HandleFunc("/upload", uploadFile)
+	http.ListenAndServe(":4040", nil)
 }
 
 func main() {
-	db, err := gorm.Open(sqlite.Open("test.db"), &gorm.Config{})
-	if err != nil {
-		panic("failed to connect database")
-	}
+	fileServer := http.FileServer(http.Dir("./static"))
+	http.Handle("/", fileServer)
+	fmt.Println("Hello World")
+	setupRoutes()
 
-	//Controllers
-	router := gin.Default()
-	router.LoadHTMLGlob("templates/*")
-
-	router.GET("/animals", func(c *gin.Context) {
-		var animals []Animal
-		result := db.Find(&animals)
-		c.HTML(http.StatusOK, "index.go.tmpl", gin.H{
-			"Animals": result,
-		})
-	})
-
-	router.GET("/animals/:id", func(c *gin.Context) {
-		id := c.Param("id")
-		var animal Animal
-		db.First(&animal, id)
-
-		c.HTML(http.StatusOK, "show.go.tmpl", gin.H{
-			"Face": animal.Face,
-		})
-	})
-
-	router.Run(":8080")
 }
